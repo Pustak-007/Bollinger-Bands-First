@@ -27,7 +27,7 @@ def CreateSignal(df):
     df['Signal'] = 0
     df.loc[df['Close_Price'] >= df['Upper_Band'], 'Signal'] = -1 #Short Signal
     df.loc[df['Close_Price'] <= df['Lower_Band'], 'Signal'] = 1 #Long Signal
-    # This signal generation is based on belief in mean reversion. 
+    # This signal generation is based on the belief in mean reversion. 
     return df 
 
 CalculateBollinger(df['Close_Price'])
