@@ -58,7 +58,15 @@ def CreatePosition(df):
             df.loc[df.index[i], 'Position'] = df.loc[prev_index, 'Position']
 
     return df
-CreatePosition(df)    
+CreatePosition(df)   
+df['Position'] = df['Position'].shift(1) 
+#Simple Backtest:
+def Backtest(df):
+    df['Daily_Returns'] = df['Close_Price'].pct_change() #Gives Daily Returns in percentage
+    df['Strategy_Returns'] = df['Daily_Returns']*df['Position']
+    df['Cumulative_Returns'] = (1 + df['Strategy_Returns']).cumprod() - 1
+    total_return = df['Cumulative_Returns'][-1]
+    return total_return #Note that this total_return is in decimals, eg: 50% is 0.5 
 #Plotting:
 def plotBollinger(df):
     fig = plt.figure()
@@ -73,5 +81,7 @@ def plotBollinger(df):
     plt.grid(True)
     plt.show()
     return
-print(df.tail(100))
+print(df.head(100))
+print('-'*50)
+print(f"The total return is {Backtest(df):.2%}")
 plotBollinger(df)
