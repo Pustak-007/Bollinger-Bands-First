@@ -1,0 +1,77 @@
+import yfinance as yf 
+import matplotlib.pyplot as plt 
+import pandas as pd
+import numpy as np 
+from datetime import datetime
+pd.set_option('display.max_rows',100)
+start = datetime(2014,9,1)
+end = datetime(2018,8,1)
+ticker = 'GOOG'
+dummy = yf.download(ticker, start, end)
+#Now creation of dataframe with the columns that we will actually see in the output console
+df = pd.DataFrame()
+df['Close_Price'] = dummy['Close']
+#Now the calculation of bollinger bands
+
+def CalculateBollinger(prices, window = 20, deviation_span = 2):
+    df['SMA'] = prices.rolling(window = window).mean()
+    sd = prices.rolling(window = window).std() 
+    df['Upper_Band'] = df['SMA'] + deviation_span * sd
+    df['Lower_Band'] = df['SMA'] - deviation_span*sd 
+    return df 
+
+#Implementation of the Bollinger Bands Strategy, creating signals:
+#The df in the argument is the entire dataframe
+
+def CreateSignal(df):
+    df['Signal'] = 0
+    df.loc[df['Close_Price'] >= df['Upper_Band'], 'Signal'] = -1 #Short Signal
+    df.loc[df['Close_Price'] <= df['Lower_Band'], 'Signal'] = 1 #Long Signal
+    # This signal generation is based on belief in mean reversion. 
+    return df 
+
+CalculateBollinger(df['Close_Price'])
+CreateSignal(df)    
+
+def CreatePosition(df):
+    # Initialize position column
+    df['Position'] = 0
+
+    for i in range(1, len(df)):
+        # Get the index of the previous row
+        prev_index = df.index[i - 1]
+
+        # Enter long position if buy signal and flat position (Position = 0 till now)
+        if df.loc[prev_index, 'Position'] == 0 and df.loc[df.index[i], 'Signal'] == 1:
+            df.loc[df.index[i], 'Position'] = 1
+        # Enter short position if sell signal and flat position (Position = 0 till now)
+        elif df.loc[prev_index, 'Position'] == 0 and df.loc[df.index[i], 'Signal'] == -1:
+            df.loc[df.index[i], 'Position'] = -1
+        # Exit long position if Close_Price crosses SMA from below
+        elif df.loc[prev_index, 'Position'] == 1 and df.loc[df.index[i], 'Close_Price'] >= df.loc[df.index[i], 'SMA']:
+            df.loc[df.index[i], 'Position'] = 0
+        # Exit short position if Close_Price crosses SMA from above
+        elif df.loc[prev_index, 'Position'] == -1 and df.loc[df.index[i], 'Close_Price'] <= df.loc[df.index[i], 'SMA']:
+            df.loc[df.index[i], 'Position'] = 0
+        # Maintain position if no signal or no exit condition
+        else:
+            df.loc[df.index[i], 'Position'] = df.loc[prev_index, 'Position']
+
+    return df
+CreatePosition(df)    
+#Plotting:
+def plotBollinger(df):
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax1.set_title('Bollinger Bands for Google', fontsize = 16)
+    ax1.set_ylabel("Google Price in $", fontsize = 12)
+    df['Close_Price'].plot(ax = ax1, linestyle = ':', color = 'k', legend = True)
+    df['SMA'].plot(ax = ax1, lw = 2, color = 'b', legend = True)
+    df['Upper_Band'].plot(ax = ax1, lw = 2, color = 'r', legend = True)
+    df['Lower_Band'].plot(ax = ax1, lw = 2, color = 'g', legend = True)
+    plt.legend(['Close Price', 'SMA', 'Upper Band', 'Lower Band'])
+    plt.grid(True)
+    plt.show()
+    return
+print(df.tail(100))
+plotBollinger(df)
